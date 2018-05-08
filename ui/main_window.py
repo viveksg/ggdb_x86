@@ -1,10 +1,11 @@
+import sys
 import gi
 gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,Gio
 
-class MainWindow(Gtk.Window):
-    def __init__(self):
-        Gtk.Window.__init__(self,title = "GGDB_X86")
+class MainWindow(Gtk.ApplicationWindow):
+    def __init__(self, app):
+        Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
         self.set_default_size(800,800)
         self.addHeaderBar()
@@ -90,9 +91,17 @@ class ScrollWindow(Gtk.ScrolledWindow):
          self.text_view = Gtk.TextView()
          self.add(self.text_view)
          
-     
-         
-window  = MainWindow()
-window.connect('destroy',Gtk.main_quit)
-window.show_all()
-Gtk.main()
+class MainApp(Gtk.Application):
+    def __init__(self):
+        Gtk.Application.__init__(self)
+    
+    def do_activate(self):
+        main_window = MainWindow(self)
+        main_window.show_all()
+    def do_startup(self):
+        Gtk.Application.do_startup(self)     
+
+if __name__ == "__main__":
+     app = MainApp()
+     exit_status = app.run(sys.argv)
+     sys.exit(exit_status)       
