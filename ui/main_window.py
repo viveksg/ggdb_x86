@@ -4,6 +4,11 @@ gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,Gio
 
 class MainWindow(Gtk.ApplicationWindow):
+    code = None
+    registers = None
+    stack = None
+    memory = None 
+    current_file_loc = None
     def __init__(self, app):
         Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
@@ -50,28 +55,31 @@ class MainWindow(Gtk.ApplicationWindow):
         file_chooser.destroy()
 
     def addFileToCodeWindow(self,dialog):
-        ''' Todo add later '''
-        print(dialog.get_filename())
+        self.current_file_loc = dialog.get_filename()
+        file = open(self.current_file_loc,"r")
+        self.code.setText(file)
+        file.close()
+        
     
     def addScrolledWindows(self):
        grid = Gtk.Grid()
        box_primary = Gtk.Box()
        box_secondary = Gtk.Box(orientation = Gtk.Orientation.VERTICAL, spacing = 6)
-       code = ScrollWindow()
-       registers = ScrollWindow()
-       memory = ScrollWindow()
-       stack = ScrollWindow()
+       self.code = ScrollWindow()
+       self.registers = ScrollWindow()
+       self.memory = ScrollWindow()
+       self.stack = ScrollWindow()
 
        grid.add(box_primary)
        grid.add(Gtk.Separator(orientation = Gtk.Orientation.VERTICAL))
        grid.attach_next_to(box_secondary,box_primary,Gtk.PositionType.RIGHT,1,1)
        
-       box_primary.add(code)
-       box_secondary.add(registers)
+       box_primary.add(self.code)
+       box_secondary.add(self.registers)
        box_secondary.add(Gtk.Separator(orientation = Gtk.Orientation.HORIZONTAL))
-       box_secondary.add(memory)
+       box_secondary.add(self.memory)
        box_secondary.add(Gtk.Separator(orientation = Gtk.Orientation.HORIZONTAL))
-       box_secondary.add(stack)
+       box_secondary.add(self.stack)
        self.add(grid)       
 
 
@@ -90,6 +98,11 @@ class ScrollWindow(Gtk.ScrolledWindow):
          self.set_hexpand(True)
          self.text_view = Gtk.TextView()
          self.add(self.text_view)
+
+    def setText(self,file):
+         buffer = self.text_view.get_buffer()
+         buffer.set_text(file.read())
+    
          
 class MainApp(Gtk.Application):
     def __init__(self):
