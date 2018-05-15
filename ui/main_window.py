@@ -61,6 +61,8 @@ class MainWindow(Gtk.ApplicationWindow):
     def addFileToCodeWindow(self,dialog):
         self.current_file_loc = dialog.get_filename()
         file = open(self.current_file_loc,"r")
+        if self.file_opened is True:
+            self.code.removeTags(self.tags)
         self.code.setText(file)
         self.file_opened = True
         self.initTags()
@@ -125,6 +127,7 @@ class ImageButton(Gtk.Button):
 
 class ScrollWindow(Gtk.ScrolledWindow):
     text_view = None
+    total_lines = 0
     def __init__(self):
          Gtk.ScrolledWindow.__init__(self)
          self.set_vexpand(True)
@@ -135,15 +138,22 @@ class ScrollWindow(Gtk.ScrolledWindow):
     def setText(self,file):
          buffer = self.text_view.get_buffer()
          buffer.set_text(file.read())
+         self.total_lines = buffer.get_line_count()
     
     def registerCallback(self,handler):
          window = self.text_view.get_window(Gtk.TextWindowType.TEXT)
-         #self.add_events(Gdk.BUTTON_PRESS_MASK)
          self.connect('button-press-event', handler)
-         #self.connect('clicked',handler)
+
     def getTextBuffer(self):
          buffer = self.text_view.get_buffer()
-         return buffer    
+         return buffer   
+   
+    def removeTags(self,tags):
+         buffer = self.text_view.get_buffer()
+         tag_table = buffer.get_tag_table()
+         for i in range(self.total_lines + 1):
+            if tags[i] is not None:
+                tag_table.remove(tags[i])
          
 class MainApp(Gtk.Application):
     def __init__(self):
