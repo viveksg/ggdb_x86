@@ -13,6 +13,10 @@ class MainWindow(Gtk.ApplicationWindow):
     tags_selection = dict()
     colors = ["orange","white"]
     file_opened = False
+    current_line = 0
+    reg_buffers = dict()
+    stack_buffers = dict()
+    mem_buffers = dict()
     def __init__(self, app):
         Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
@@ -34,9 +38,13 @@ class MainWindow(Gtk.ApplicationWindow):
         left_box.add(open)
 
         run = ImageButton("system-run-symbolic")
+        run.connect('clicked',self.handle_run_clicked)
         prev = ImageButton("go-previous-symbolic")
+        prev.connect('clicked',self.handle_prev_clicked)
         next = ImageButton("go-next-symbolic")
+        next.connect('clicked',self.handle_next_clicked)
         stop = ImageButton("process-stop-symbolic")
+        stop.connect('clicked',self.handle_stop_clicked)
         
         right_box.add(run)
         right_box.add(prev)
@@ -47,6 +55,24 @@ class MainWindow(Gtk.ApplicationWindow):
         header.pack_start(left_box)
         header.pack_end(right_box)
     
+    def handle_run_clicked(self, widget):
+        print('run called')
+
+    def handle_prev_clicked(self, widget):
+        if self.current_line == 0:
+            return
+        self.current_line = self.current_line - 1
+        print(str(self.current_line))
+
+    def handle_next_clicked(self, widget):
+        if self.current_line == self.code.total_lines:
+            return
+        self.current_line = self.current_line + 1
+        print(str(self.current_line))
+
+    def handle_stop_clicked(self, widget):
+        print('stop called')
+
     def handleOpenClick(self,widget):
         file_chooser = Gtk.FileChooserDialog("Select File",self,Gtk.FileChooserAction.OPEN,     
                                             (Gtk.STOCK_CANCEL,Gtk.ResponseType.CANCEL,Gtk.STOCK_OPEN,Gtk.ResponseType.OK))
@@ -57,7 +83,7 @@ class MainWindow(Gtk.ApplicationWindow):
             print("No File Selected ...")
         
         file_chooser.destroy()
-
+    
     def addFileToCodeWindow(self,dialog):
         self.current_file_loc = dialog.get_filename()
         file = open(self.current_file_loc,"r")
@@ -66,6 +92,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.code.setText(file)
         self.file_opened = True
         self.initTags()
+        self.clean()
         file.close()
     
     def initTags(self):
@@ -73,7 +100,10 @@ class MainWindow(Gtk.ApplicationWindow):
         total_line = buffer.get_line_count()
         for i in range(total_line+1):
            self.tags[i] = None
-           self.tags_selection[i] = -1    
+           self.tags_selection[i] = -1   
+    
+    def clean(self):
+        self.current_line = 0
     
     def addScrolledWindows(self):
        grid = Gtk.Grid()
