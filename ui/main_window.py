@@ -1,7 +1,11 @@
 import sys
+sys.path.append("../")
 import gi
+from core.utils import Utils
+from core.constants import Constants
 gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,Gio
+
 
 class MainWindow(Gtk.ApplicationWindow):
     code = None
@@ -11,6 +15,7 @@ class MainWindow(Gtk.ApplicationWindow):
     current_file_loc = None
     tags = dict()
     tags_selection = dict()
+    utils = None
     colors = ["orange","white"]
     file_opened = False
     current_line = 0
@@ -57,6 +62,7 @@ class MainWindow(Gtk.ApplicationWindow):
     
     def handle_run_clicked(self, widget):
         print('run called')
+        self.utils.generate_object_and_exec_files()
 
     def handle_prev_clicked(self, widget):
         if self.current_line == 0:
@@ -86,6 +92,15 @@ class MainWindow(Gtk.ApplicationWindow):
     
     def addFileToCodeWindow(self,dialog):
         self.current_file_loc = dialog.get_filename()
+        if self.utils is None:
+            self.utils = Utils(self.current_file_loc)
+        else:
+            self.utils.set_data(self.current_file_loc)
+  
+        if self.utils.extension != Constants.ASM:
+            self.show_error("File format should be .asm")
+            return
+        
         file = open(self.current_file_loc,"r")
         if self.file_opened is True:
             self.code.removeTags(self.tags)
@@ -147,6 +162,11 @@ class MainWindow(Gtk.ApplicationWindow):
            buffer.apply_tag(self.tags[current_line],buffer.get_iter_at_line(current_line),buffer.get_iter_at_line(current_line + 1)) 
            return
        self.tags[current_line].props.background = self.colors[self.tags_selection[current_line]]
+
+    def show_error(self, message):
+        error = Gtk.MessageDialog(self,0,Gtk.MessageType.ERROR,Gtk.ButtonsType.CANCEL,message)
+        error.run()
+        error.destroy()
 
 class ImageButton(Gtk.Button):
     def __init__(self,icon_name):
