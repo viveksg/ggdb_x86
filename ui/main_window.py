@@ -62,7 +62,7 @@ class MainWindow(Gtk.ApplicationWindow):
     
     def handle_run_clicked(self, widget):
         print('run called')
-        self.utils.generate_object_and_exec_files()
+        self.utils.set_up_debugger()
 
     def handle_prev_clicked(self, widget):
         if self.current_line == 0:
@@ -74,6 +74,7 @@ class MainWindow(Gtk.ApplicationWindow):
         if self.current_line == self.code.total_lines:
             return
         self.current_line = self.current_line + 1
+        self.utils.execute_next_statement()
         print(str(self.current_line))
 
     def handle_stop_clicked(self, widget):
@@ -168,6 +169,10 @@ class MainWindow(Gtk.ApplicationWindow):
         error.run()
         error.destroy()
 
+    def close_gdb(self):
+        print('closing gdb')
+        self.utils.quit_gdb()
+
 class ImageButton(Gtk.Button):
     def __init__(self,icon_name):
          Gtk.Button.__init__(self)
@@ -204,16 +209,24 @@ class ScrollWindow(Gtk.ScrolledWindow):
          for i in range(self.total_lines + 1):
             if tags[i] is not None:
                 tag_table.remove(tags[i])
+
          
 class MainApp(Gtk.Application):
+    main_window = None
     def __init__(self):
         Gtk.Application.__init__(self)
     
     def do_activate(self):
-        main_window = MainWindow(self)
-        main_window.show_all()
+        self.main_window = MainWindow(self)
+        self.main_window.show_all()
+
     def do_startup(self):
         Gtk.Application.do_startup(self)     
+
+    def do_shutdown(self):
+        print("app quit_called..")
+        self.main_window.close_gdb()
+        Gtk.Application.do_shutdown(self)
 
 if __name__ == "__main__":
      app = MainApp()
