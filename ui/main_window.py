@@ -73,8 +73,8 @@ class MainWindow(Gtk.ApplicationWindow):
     def handle_next_clicked(self, widget):
         if self.current_line == self.code.total_lines:
             return
+        self.utils.execute_next_statement(self.current_line)
         self.current_line = self.current_line + 1
-        self.utils.execute_next_statement()
         print(str(self.current_line))
 
     def handle_stop_clicked(self, widget):
@@ -94,7 +94,7 @@ class MainWindow(Gtk.ApplicationWindow):
     def addFileToCodeWindow(self,dialog):
         self.current_file_loc = dialog.get_filename()
         if self.utils is None:
-            self.utils = Utils(self.current_file_loc)
+            self.utils = Utils(self.current_file_loc,self)
         else:
             self.utils.set_data(self.current_file_loc)
   
@@ -105,7 +105,7 @@ class MainWindow(Gtk.ApplicationWindow):
         file = open(self.current_file_loc,"r")
         if self.file_opened is True:
             self.code.removeTags(self.tags)
-        self.code.setText(file)
+        self.code.set_text_from_file(file)
         self.file_opened = True
         self.initTags()
         self.clean()
@@ -168,7 +168,16 @@ class MainWindow(Gtk.ApplicationWindow):
         error = Gtk.MessageDialog(self,0,Gtk.MessageType.ERROR,Gtk.ButtonsType.CANCEL,message)
         error.run()
         error.destroy()
-
+    
+    def show_stack_output(self,line_no,output):
+        self.stack.set_text(output)
+   
+    def show_memory_output(self,line_no,output):
+        self.memory.set_text(output) 
+        
+    def show_register_output(self,line_no,output):
+        self.registers.set_text(output)
+    
     def close_gdb(self):
         print('closing gdb')
         self.utils.quit_gdb()
@@ -190,10 +199,14 @@ class ScrollWindow(Gtk.ScrolledWindow):
          self.text_view = Gtk.TextView()
          self.add(self.text_view)
 
-    def setText(self,file):
+    def set_text_from_file(self,file):
          buffer = self.text_view.get_buffer()
          buffer.set_text(file.read())
          self.total_lines = buffer.get_line_count()
+
+    def set_text(self,data):
+         buffer = self.text_view.get_buffer()
+         buffer.set_text(data)
     
     def registerCallback(self,handler):
          window = self.text_view.get_window(Gtk.TextWindowType.TEXT)

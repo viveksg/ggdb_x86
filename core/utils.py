@@ -9,9 +9,11 @@ class Utils:
     gdb_controller = None
     gdb_running = False
     executable = None
-    def __init__(self, full_file_path):
+    app_window = None
+    def __init__(self, full_file_path, app):
         self.set_data(full_file_path)
         self.start_gdb_process()
+        self.app_window = app
 
     def set_data(self, file_path):
         data = self.extract_data(file_path)
@@ -56,7 +58,7 @@ class Utils:
       
     def start_gdb_process(self):
         if not self.gdb_running:
-            self.gdb_controller = GDBController()
+            self.gdb_controller = GDBController(self)
             self.gdb_running = True
     
     def set_up_debugger(self):
@@ -66,21 +68,30 @@ class Utils:
         self.start_execution()
 
     def add_executable_to_gdb(self):
-        self.gdb_controller.send_command("file "+self.executable)
+        self.gdb_controller.send_command(-1,None,"file "+self.executable)
 
     def add_breakpoints(self):
-        self.gdb_controller.send_command("break _start")
+        self.gdb_controller.send_command(-1,None,"break _start")
    
     def start_execution(self):
-        self.gdb_controller.send_command("run")
+        self.gdb_controller.send_command(-1,None,"run")
 
-    def execute_next_statement(self):
-        self.gdb_controller.send_command("next")
-        self.gdb_controller.send_command("info registers")  
+    def execute_next_statement(self,line_no):
+        self.gdb_controller.send_command(-1,None,"next")
+        self.gdb_controller.send_command(line_no,Constants.TARGET_REGISTER,"info registers")  
  
     def quit_gdb(self):
        # self.gdb_controller.send_command("quit")
         self.gdb_controller.kill_gdb_process()
+
+    def display_output(self, line_no, output_target, output):
+        if output_target == Constants.TARGET_STACK:
+            self.app_window.show_stack_output(line_no, output)
+        elif output_target == Constants.TARGET_MEMORY:
+            self.app_window.show_memory_output(line_no, output)
+        elif output_target == Constants.TARGET_REGISTER:
+            self.app_window.show_register_output(line_no, output)
+        
     
 
    

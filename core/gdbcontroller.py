@@ -19,8 +19,9 @@ class GDBController:
     event = None
     read_worker = None
     write_worker = None
-    
-    def __init__(self):
+    utils = None
+    def __init__(self,ut):
+        self.utils = ut
         self.gdb_process = Popen(["gdb"],stdin = PIPE, stderr = STDOUT,stdout = PIPE,bufsize = Constants.BUFF_SIZE)
         self.pid =  self.gdb_process.pid
         self.read_fd = self.gdb_process.stdout.fileno()
@@ -30,18 +31,18 @@ class GDBController:
         self.result_queue = Queue()
         self.event = Event()
         self.write_worker = WriteWorker(self.write_queue,self.read_queue,self.write_fd,self.event)
-        self.read_worker = ReadWorker(self.read_queue,self.result_queue,self.read_fd,self.event)
+        self.read_worker = ReadWorker(self.read_queue,self.result_queue,self.read_fd,self.event,self.utils)
         self.read_worker.start()
         self.write_worker.start()
 
-    def send_command(self,command):
-        self.write_queue.put((str(int(time.time())),command+'\n',False))
+    def send_command(self,line_no,output_target,command):
+        self.write_queue.put((str(int(time.time())),line_no,output_target,command+'\n',False))
 
     def kill_gdb_process(self):
         print('killed called')
-        self.write_queue.put((str(int(time.time())),"Break",True))
+        self.write_queue.put((str(int(time.time())),-1,None,"Break",True))
         self.write_queue.join()
-        self.read_queue.put((str(int(time.time())),"Break",True))
+        self.read_queue.put((str(int(time.time())),-1,None,"Break",True))
         self.read_queue.join()
         os.kill(self.pid,signal.SIGTERM)
                              
