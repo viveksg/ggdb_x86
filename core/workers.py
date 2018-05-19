@@ -40,17 +40,18 @@ class WriteWorker(Thread):
 
 class ReadWorker(Thread):
     read_queue = None
-    result_queue = None
     read_fd  = None
     event = None
     utils = None
-    def __init__(self,read_q,res_q,rfd,evt,utl):
+    result_queue = None
+    result_event = None
+    def __init__(self,read_q,rfd,evt,out_q,out_evt):
         Thread.__init__(self)
         self.read_queue = read_q
-        self.result_queue = res_q
         self.read_fd = rfd 
         self.event = evt
-        self.utils = utl
+        self.result_queue = out_q
+        self.result_event = out_evt
         
     def run(self):
         timestamp = None
@@ -67,9 +68,8 @@ class ReadWorker(Thread):
                 print(command)
                 output = self.read_output()
                 if line_no > -1:
-                    print(output)
+                    self.send_output(line_no,output_target,output)
                 print('----------------------')
-                self.utils.display_output(line_no,output_target,output)
                 # add code in future to put results in result queue
             self.read_queue.task_done()
             self.event.set()
@@ -93,3 +93,8 @@ class ReadWorker(Thread):
              if(found == False and (int(time.time()) - start_time > 5)):
                  break
          return result 
+
+    def send_output(self,line_no,output_target,output):
+        self.result_queue.put((line_no,output_target,output))
+        self.result_event.wait()
+        self.result_event.clear()

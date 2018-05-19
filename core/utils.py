@@ -1,7 +1,8 @@
 import subprocess
 from core.constants import Constants
 from core.gdbcontroller import GDBController
-
+from threading import Event
+from queue import Queue
 class Utils:
     parent_dir = None
     file_name = None
@@ -10,10 +11,14 @@ class Utils:
     gdb_running = False
     executable = None
     app_window = None
+    op_queue = None
+    op_event = None
     def __init__(self, full_file_path, app):
         self.set_data(full_file_path)
-        self.start_gdb_process()
         self.app_window = app
+        self.op_queue = Queue()
+        self.op_event = Event()
+        self.start_gdb_process()
 
     def set_data(self, file_path):
         data = self.extract_data(file_path)
@@ -58,7 +63,7 @@ class Utils:
       
     def start_gdb_process(self):
         if not self.gdb_running:
-            self.gdb_controller = GDBController(self)
+            self.gdb_controller = GDBController(self.op_queue,self.op_event)
             self.gdb_running = True
     
     def set_up_debugger(self):
@@ -78,11 +83,22 @@ class Utils:
 
     def execute_next_statement(self,line_no):
         self.gdb_controller.send_command(-1,None,"next")
-        self.gdb_controller.send_command(line_no,Constants.TARGET_REGISTER,"info registers")  
+        self.gdb_controller.send_command(line_no,Constants.TARGET_REGISTER,"info registers") 
+        if(line_no > -1):
+            self.wait_for_output(line_no) 
  
     def quit_gdb(self):
        # self.gdb_controller.send_command("quit")
         self.gdb_controller.kill_gdb_process()
+
+    def wait_for_output(self, expected_line):
+        while True:
+             lno,op_target,op = self.op_queue.get()
+             if expected_line == lno:
+                self.op_event.set()
+                self.op_queue.task_done()
+                self.display_output(lno,op_target,op)
+                break
 
     def display_output(self, line_no, output_target, output):
         if output_target == Constants.TARGET_STACK:

@@ -4,7 +4,7 @@ import gi
 from core.utils import Utils
 from core.constants import Constants
 gi.require_version('Gtk','3.0')
-from gi.repository import Gtk,Gio
+from gi.repository import Gtk,Gio,GObject
 
 
 class MainWindow(Gtk.ApplicationWindow):
@@ -19,9 +19,9 @@ class MainWindow(Gtk.ApplicationWindow):
     colors = ["orange","white"]
     file_opened = False
     current_line = 0
-    reg_buffers = dict()
-    stack_buffers = dict()
-    mem_buffers = dict()
+    reg_cache = dict()
+    stack_cache = dict()
+    mem_cache = dict()
     def __init__(self, app):
         Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
@@ -176,7 +176,9 @@ class MainWindow(Gtk.ApplicationWindow):
         self.memory.set_text(output) 
         
     def show_register_output(self,line_no,output):
-        self.registers.set_text(output)
+        self.reg_cache[line_no] = output
+        self.registers.set_text(self.reg_cache,line_no)
+        
     
     def close_gdb(self):
         print('closing gdb')
@@ -204,9 +206,9 @@ class ScrollWindow(Gtk.ScrolledWindow):
          buffer.set_text(file.read())
          self.total_lines = buffer.get_line_count()
 
-    def set_text(self,data):
+    def set_text(self,data,line_no):
          buffer = self.text_view.get_buffer()
-         buffer.set_text(data)
+         buffer.set_text(data[line_no])
     
     def registerCallback(self,handler):
          window = self.text_view.get_window(Gtk.TextWindowType.TEXT)
@@ -243,5 +245,6 @@ class MainApp(Gtk.Application):
 
 if __name__ == "__main__":
      app = MainApp()
+    # GObject.threads_init()
      exit_status = app.run(sys.argv)
      sys.exit(exit_status)       
