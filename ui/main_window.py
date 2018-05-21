@@ -18,10 +18,16 @@ class MainWindow(Gtk.ApplicationWindow):
     utils = None
     colors = ["orange","white"]
     file_opened = False
-    current_line = 0
+    current_line = -1
+    highest_line_reached = -1;
     reg_cache = dict()
     stack_cache = dict()
     mem_cache = dict()
+    run = None
+    prev = None
+    next = None
+    stop = None
+    open = None
     def __init__(self, app):
         Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
@@ -38,23 +44,23 @@ class MainWindow(Gtk.ApplicationWindow):
         left_box = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL, spacing = 6)
         right_box = Gtk.Box(orientation = Gtk.Orientation.HORIZONTAL, spacing = 6)
 
-        open = Gtk.Button.new_with_label('Open')
-        open.connect('clicked',self.handleOpenClick)
-        left_box.add(open)
+        self.open = Gtk.Button.new_with_label('Open')
+        self.open.connect('clicked',self.handleOpenClick)
+        left_box.add(self.open)
 
-        run = ImageButton("system-run-symbolic")
-        run.connect('clicked',self.handle_run_clicked)
-        prev = ImageButton("go-previous-symbolic")
-        prev.connect('clicked',self.handle_prev_clicked)
-        next = ImageButton("go-next-symbolic")
-        next.connect('clicked',self.handle_next_clicked)
-        stop = ImageButton("process-stop-symbolic")
-        stop.connect('clicked',self.handle_stop_clicked)
+        self.run = ImageButton("system-run-symbolic")
+        self.run.connect('clicked',self.handle_run_clicked)
+        self.prev = ImageButton("go-previous-symbolic")
+        self.prev.connect('clicked',self.handle_prev_clicked)
+        self.next = ImageButton("go-next-symbolic")
+        self.next.connect('clicked',self.handle_next_clicked)
+        self.stop = ImageButton("process-stop-symbolic")
+        self.stop.connect('clicked',self.handle_stop_clicked)
         
-        right_box.add(run)
-        right_box.add(prev)
-        right_box.add(next)
-        right_box.add(stop)
+        right_box.add(self.run)
+        right_box.add(self.prev)
+        right_box.add(self.next)
+        right_box.add(self.stop)
         
         
         header.pack_start(left_box)
@@ -62,22 +68,31 @@ class MainWindow(Gtk.ApplicationWindow):
     
     def handle_run_clicked(self, widget):
         print('run called')
+        self.disable_controls_after_start()
         self.utils.set_up_debugger()
 
     def handle_prev_clicked(self, widget):
         if self.current_line == 0:
             return
-        self.current_line = self.current_line - 1
+        self.disable_step_controls()
+        self.current_line = self.current_line -1
+        self.show_register_output(self.current_line,None)
         print(str(self.current_line))
 
     def handle_next_clicked(self, widget):
         if self.current_line == self.code.total_lines:
             return
-        self.utils.execute_next_statement(self.current_line)
+        self.disable_step_controls()
         self.current_line = self.current_line + 1
+        if self.current_line <= self.highest_line_reached:
+            self.show_register_output(self.current_line,None)
+        else:
+           self.utils.execute_next_statement(self.current_line)
+           self.highest_line_reached = self.current_line
         print(str(self.current_line))
 
     def handle_stop_clicked(self, widget):
+        self.enable_controls_after_stop()
         print('stop called')
 
     def handleOpenClick(self,widget):
@@ -119,7 +134,8 @@ class MainWindow(Gtk.ApplicationWindow):
            self.tags_selection[i] = -1   
     
     def clean(self):
-        self.current_line = 0
+        self.current_line = -1
+        self.highest_line_reached  = -1
     
     def addScrolledWindows(self):
        grid = Gtk.Grid()
@@ -176,10 +192,35 @@ class MainWindow(Gtk.ApplicationWindow):
         self.memory.set_text(output) 
         
     def show_register_output(self,line_no,output):
-        self.reg_cache[line_no] = output
-        self.registers.set_text(self.reg_cache,line_no)
+        self.enable_step_controls()
+        if output is None:
+           output = self.reg_cache[line_no]
+        else:
+           self.reg_cache[line_no] = output
+        self.registers.set_text(output)
         
+    def disable_step_controls(self):
+        self.next.set_sensitive(False)
+        self.prev.set_sensitive(False)
     
+    def enable_step_controls(self):
+        self.next.set_sensitive(True)
+        self.prev.set_sensitive(True)
+       
+    def disable_controls_after_start(self):
+        self.open.set_sensitive(False)
+        self.run.set_sensitive(False)
+        self.next.set_sensitive(True)
+        self.prev.set_sensitive(False)
+        self.stop.set_sensitive(True)
+
+    def enable_controls_after_stop(self):
+        self.open.set_sensitive(True)
+        self.run.set_sensitive(True)
+        self.next.set_sensitive(False)
+        self.prev.set_sensitive(False)
+        self.stop.set_sensitive(False)
+
     def close_gdb(self):
         print('closing gdb')
         self.utils.quit_gdb()
@@ -206,9 +247,9 @@ class ScrollWindow(Gtk.ScrolledWindow):
          buffer.set_text(file.read())
          self.total_lines = buffer.get_line_count()
 
-    def set_text(self,data,line_no):
+    def set_text(self,data):
          buffer = self.text_view.get_buffer()
-         buffer.set_text(data[line_no])
+         buffer.set_text(data)
     
     def registerCallback(self,handler):
          window = self.text_view.get_window(Gtk.TextWindowType.TEXT)
