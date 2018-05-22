@@ -86,7 +86,11 @@ class Utils:
         self.gdb_controller.send_command(line_no,Constants.TARGET_REGISTER,"info registers") 
         if(line_no > -1):
             self.wait_for_output(line_no) 
- 
+    
+    def stop_current_program(self):
+        self.gdb_controller.send_command(-1,None,"kill")
+        self.gdb_controller.send_command(-1,None,"Y")
+
     def quit_gdb(self):
        # self.gdb_controller.send_command("quit")
         self.gdb_controller.kill_gdb_process()

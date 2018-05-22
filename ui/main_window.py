@@ -75,7 +75,9 @@ class MainWindow(Gtk.ApplicationWindow):
         if self.current_line == 0:
             return
         self.disable_step_controls()
+        self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"white")
         self.current_line = self.current_line -1
+        self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"blue")
         self.show_register_output(self.current_line,None)
         print(str(self.current_line))
 
@@ -83,7 +85,10 @@ class MainWindow(Gtk.ApplicationWindow):
         if self.current_line == self.code.total_lines:
             return
         self.disable_step_controls()
+        if self.current_line > -1:
+            self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"white")
         self.current_line = self.current_line + 1
+        self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"blue")
         if self.current_line <= self.highest_line_reached:
             self.show_register_output(self.current_line,None)
         else:
@@ -92,6 +97,7 @@ class MainWindow(Gtk.ApplicationWindow):
         print(str(self.current_line))
 
     def handle_stop_clicked(self, widget):
+        self.utils.stop_current_program()
         self.enable_controls_after_stop()
         print('stop called')
 
@@ -136,6 +142,9 @@ class MainWindow(Gtk.ApplicationWindow):
     def clean(self):
         self.current_line = -1
         self.highest_line_reached  = -1
+        self.reg_cache.clear()
+        self.mem_cache.clear()
+        self.stack_cache.clear()
     
     def addScrolledWindows(self):
        grid = Gtk.Grid()
@@ -179,6 +188,13 @@ class MainWindow(Gtk.ApplicationWindow):
            buffer.apply_tag(self.tags[current_line],buffer.get_iter_at_line(current_line),buffer.get_iter_at_line(current_line + 1)) 
            return
        self.tags[current_line].props.background = self.colors[self.tags_selection[current_line]]
+
+    def add_tag_with_color(self, buffer, line, color):
+        if self.tags[line] is None:
+            self.tags[line] = buffer.create_tag("tag_"+str(line), background = color)
+            buffer.apply_tag(self.tags[line], buffer.get_iter_at_line(line), buffer.get_iter_at_line(line+1))
+            return
+        self.tags[line].props.background = color
 
     def show_error(self, message):
         error = Gtk.MessageDialog(self,0,Gtk.MessageType.ERROR,Gtk.ButtonsType.CANCEL,message)
