@@ -1,9 +1,12 @@
 import subprocess
+import re
 from core.constants import Constants
 from core.gdbcontroller import GDBController
 from threading import Event
 from queue import Queue
+
 class Utils:
+    current_executed_line = -1
     parent_dir = None
     file_name = None
     extension = None
@@ -82,10 +85,14 @@ class Utils:
         self.gdb_controller.send_command(-1,None,"run")
 
     def execute_next_statement(self,line_no):
-        self.gdb_controller.send_command(-1,None,"next")
-        self.gdb_controller.send_command(line_no,Constants.TARGET_REGISTER,"info registers") 
-        if(line_no > -1):
-            self.wait_for_output(line_no) 
+        self.send_command_to_gdb(-1,None,"next")
+        self.send_command_to_gdb(-1,Constants.TARGET_LINE_NO,"frame")
+        self.send_command_to_gdb(line_no,Constants.TARGET_REGISTER,"info registers")  
+    
+    def send_command_to_gdb(self,req_no,request_type,command):
+        self.gdb_controller.send_command(req_no,request_type, command)
+        if request_type is not None:
+            self.wait_for_output(req_no)
     
     def stop_current_program(self):
         self.gdb_controller.send_command(-1,None,"kill")
@@ -111,6 +118,37 @@ class Utils:
             self.app_window.show_memory_output(line_no, output)
         elif output_target == Constants.TARGET_REGISTER:
             self.app_window.show_register_output(line_no, output)
+        elif output_target == Constants.TARGET_LINE_NO:
+            line = self.get_current_executed_line(output)
+            if line > -1:
+               if line > self.current_executed_line:
+                  self.current_executed_line = line
+                  self.app_window.set_current_executed_data(self.current_executed_line)
+            else:
+               if line == Constants.EXECUTION_COMPLETE:
+                  self.app_window.set_execution_complete()
+
+    def get_current_executed_line(self,data):
+        data = data.strip()
+        if data is None or len(data) == 0 :
+            return -1
+
+        no_stack = re.findall('No Stack',data,re.M|re.I)
+        if no_stack:
+             return Constants.EXECUTION_COMPLETE
+
+        line = 0
+        str_line = None
+        lines = re.findall(':[0-9]+',data)
+
+        if lines is not None:
+            if lines[0] is not None:
+                  str_line = lines[0][1:]
+        if str_line is not None:
+           line = int(str_line)
+
+        return (line - 1);
+        
         
     
 

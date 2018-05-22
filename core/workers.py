@@ -67,7 +67,7 @@ class ReadWorker(Thread):
             if command is not None:
                 print(command)
                 output = self.read_output()
-                if line_no > -1:
+                if output_target is not None:
                     self.send_output(line_no,output_target,output)
                 print('----------------------')
                 # add code in future to put results in result queue

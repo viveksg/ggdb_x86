@@ -3,6 +3,7 @@ sys.path.append("../")
 import gi
 from core.utils import Utils
 from core.constants import Constants
+from core.output import Output
 gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,Gio,GObject
 
@@ -23,11 +24,15 @@ class MainWindow(Gtk.ApplicationWindow):
     reg_cache = dict()
     stack_cache = dict()
     mem_cache = dict()
+    results = dict()
     run = None
     prev = None
     next = None
     stop = None
     open = None
+    starting_point = 0
+    default_bp_index = 0
+    execution_complete = False
     def __init__(self, app):
         Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
@@ -72,12 +77,12 @@ class MainWindow(Gtk.ApplicationWindow):
         self.utils.set_up_debugger()
 
     def handle_prev_clicked(self, widget):
-        if self.current_line == 0:
+        if self.current_line == self.starting_point:
             return
         self.disable_step_controls()
-        self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"white")
+        self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"white")
         self.current_line = self.current_line -1
-        self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"blue")
+        self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"blue")
         self.show_register_output(self.current_line,None)
         print(str(self.current_line))
 
@@ -86,13 +91,20 @@ class MainWindow(Gtk.ApplicationWindow):
             return
         self.disable_step_controls()
         if self.current_line > -1:
-            self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"white")
-        self.current_line = self.current_line + 1
-        self.add_tag_with_color(self.code.getTextBuffer(),self.current_line,"blue")
+            self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"white")
+
+        
+        self.current_line += 1 if self.current_line < self.highest_line_reached or not self.execution_complete else 0
+        
         if self.current_line <= self.highest_line_reached:
             self.show_register_output(self.current_line,None)
+            self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"blue")
         else:
-           self.utils.execute_next_statement(self.current_line)
+           if not self.execution_complete:
+               self.utils.execute_next_statement(self.current_line)
+           else:
+               self.current_line = self.current_line - 1
+               self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"blue")
            self.highest_line_reached = self.current_line
         print(str(self.current_line))
 
@@ -142,6 +154,7 @@ class MainWindow(Gtk.ApplicationWindow):
     def clean(self):
         self.current_line = -1
         self.highest_line_reached  = -1
+        self.execution_complete = False
         self.reg_cache.clear()
         self.mem_cache.clear()
         self.stack_cache.clear()
@@ -210,10 +223,17 @@ class MainWindow(Gtk.ApplicationWindow):
     def show_register_output(self,line_no,output):
         self.enable_step_controls()
         if output is None:
-           output = self.reg_cache[line_no]
+           output = self.results[line_no].reg_data
         else:
-           self.reg_cache[line_no] = output
+           if self.execution_complete:
+               line_no = line_no -1;
+               self.current_line += -1
+               self.highest_reached_line = self.current_line
+               output = self.results[line_no].reg_data
+           else:
+               self.results[line_no].reg_data = output
         self.registers.set_text(output)
+        self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"blue")
         
     def disable_step_controls(self):
         self.next.set_sensitive(False)
@@ -236,6 +256,13 @@ class MainWindow(Gtk.ApplicationWindow):
         self.next.set_sensitive(False)
         self.prev.set_sensitive(False)
         self.stop.set_sensitive(False)
+    
+    
+    def set_current_executed_data(self, last_executed_line):
+        self.results[self.current_line] = Output(self.current_line,last_executed_line)
+
+    def set_execution_complete(self):
+        self.execution_complete = True
 
     def close_gdb(self):
         print('closing gdb')
