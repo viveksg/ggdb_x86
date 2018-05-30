@@ -12,3 +12,7 @@ class Constants:
     TARGET_LINE_NO = 1004
     DEFAULT_BREAK_POINT = "_start"
     EXECUTION_COMPLETE = -1001
+    BREAKPOINT_COLOR = "orange"
+    DEFAULT_COLOR = "white"
+    EXECUTED_LINE_COLOT = "blue"
+    DOUBLE_CLICK_DURATION = 1

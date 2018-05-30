@@ -9,6 +9,7 @@ class Utils:
     current_executed_line = -1
     parent_dir = None
     file_name = None
+    full_file_name = None
     extension = None
     gdb_controller = None
     gdb_running = False
@@ -16,8 +17,13 @@ class Utils:
     app_window = None
     op_queue = None
     op_event = None
+    using_default_breakpoint = False
+    breakpoints = dict()
+    breakpoint_lines = dict()
+    using_default_breakpoint = False
     def __init__(self, full_file_path, app):
         self.set_data(full_file_path)
+        self.full_file_name = full_file_path
         self.app_window = app
         self.op_queue = Queue()
         self.op_event = Event()
@@ -72,22 +78,44 @@ class Utils:
     def set_up_debugger(self):
         self.generate_object_and_exec_files()
         self.add_executable_to_gdb()
-        self.add_breakpoints()
+        self.apply_breakpoints()
         self.start_execution()
 
     def add_executable_to_gdb(self):
         self.gdb_controller.send_command(-1,None,"file "+self.executable)
+    
+    def add_breakpoint(self,line_no):
+        self.breakpoint_lines[line_no] = line_no
+        self.breakpoints[line_no] = self.full_file_name+":"+str(line_no)
 
-    def add_breakpoints(self):
-        self.gdb_controller.send_command(-1,None,"break _start")
-   
+    def remove_breakpoint(self,line_no):
+        del self.breakpoints[line_no]
+
+    def apply_breakpoints(self):
+        if len(self.breakpoints) > 0:
+            for breakpoint in self.breakpoints:
+                  self.send_breakpoint(self.breakpoints[breakpoint])
+        else:
+            self.using_default_breakpoint = True
+            self.send_breakpoint("_start")
+
+    def send_breakpoint(self, bp):
+        self.gdb_controller.send_command(-1,None,"break "+bp)
+                
+    def remove_all_breakpoints(self):
+        self.breakpoints.clear()
+        self.breakpoint_lines.clear()
+        self.using_default_breakpoint = False
+    
+    
     def start_execution(self):
         self.gdb_controller.send_command(-1,None,"run")
-
+   
     def execute_next_statement(self,line_no):
-        self.send_command_to_gdb(-1,None,"next")
+        command = "next" if self.using_default_breakpoint else "continue"
         self.send_command_to_gdb(-1,Constants.TARGET_LINE_NO,"frame")
-        self.send_command_to_gdb(line_no,Constants.TARGET_REGISTER,"info registers")  
+        self.send_command_to_gdb(line_no,Constants.TARGET_REGISTER,"info registers")
+        self.send_command_to_gdb(-1,None,command)
     
     def send_command_to_gdb(self,req_no,request_type,command):
         self.gdb_controller.send_command(req_no,request_type, command)

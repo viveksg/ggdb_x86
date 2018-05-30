@@ -1,4 +1,5 @@
 import sys
+import time
 sys.path.append("../")
 import gi
 from core.utils import Utils
@@ -21,6 +22,7 @@ class MainWindow(Gtk.ApplicationWindow):
     file_opened = False
     current_line = -1
     highest_line_reached = -1;
+    last_clicked = 0
     reg_cache = dict()
     stack_cache = dict()
     mem_cache = dict()
@@ -33,6 +35,8 @@ class MainWindow(Gtk.ApplicationWindow):
     starting_point = 0
     default_bp_index = 0
     execution_complete = False
+    allow_adding_breakpoints = False
+
     def __init__(self, app):
         Gtk.Window.__init__(self,title = "GGDB_X86",application = app)
         self.set_border_width(10)
@@ -73,6 +77,8 @@ class MainWindow(Gtk.ApplicationWindow):
     
     def handle_run_clicked(self, widget):
         print('run called')
+        self.allow_adding_breakpoints = False
+        self.hide_breakpoint_tags()
         self.disable_controls_after_start()
         self.utils.set_up_debugger()
 
@@ -109,6 +115,8 @@ class MainWindow(Gtk.ApplicationWindow):
         print(str(self.current_line))
 
     def handle_stop_clicked(self, widget):
+        self.allow_adding_breakpoints = True
+        self.show_breakpoint_tags()
         self.utils.stop_current_program()
         self.enable_controls_after_stop()
         print('stop called')
@@ -141,6 +149,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.code.set_text_from_file(file)
         self.file_opened = True
         self.initTags()
+        self.utils.remove_all_breakpoints()
         self.clean()
         file.close()
     
@@ -158,6 +167,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.reg_cache.clear()
         self.mem_cache.clear()
         self.stack_cache.clear()
+        self.results.clear()
+        self.allow_adding_breakpoints = True
     
     def addScrolledWindows(self):
        grid = Gtk.Grid()
@@ -182,7 +193,10 @@ class MainWindow(Gtk.ApplicationWindow):
        self.add(grid)    
   
     def codeClickedHandler(self,widget,data):
-       if not self.file_opened:
+       if time.time()-self.last_clicked < Constants.DOUBLE_CLICK_DURATION:
+              return
+       self.last_clicked = time.time()
+       if not (self.file_opened & self.allow_adding_breakpoints) :
            return
        buffer = self.code.getTextBuffer()
        current_line = self.getCurrentLine(buffer)
@@ -196,6 +210,11 @@ class MainWindow(Gtk.ApplicationWindow):
    
     def addTag(self,buffer,current_line):
        self.tags_selection[current_line] = (self.tags_selection[current_line] + 1) % 2
+       if self.tags_selection[current_line] == 0:
+             self.utils.add_breakpoint(current_line)
+       else:
+             self.utils.remove_breakpoint(current_line)
+
        if self.tags[current_line] is None:
            self.tags[current_line]  = buffer.create_tag("tag_"+str(current_line),background = "orange")
            buffer.apply_tag(self.tags[current_line],buffer.get_iter_at_line(current_line),buffer.get_iter_at_line(current_line + 1)) 
@@ -208,6 +227,17 @@ class MainWindow(Gtk.ApplicationWindow):
             buffer.apply_tag(self.tags[line], buffer.get_iter_at_line(line), buffer.get_iter_at_line(line+1))
             return
         self.tags[line].props.background = color
+   
+    def hide_breakpoint_tags(self):
+         for tag_index in self.utils.breakpoint_lines:
+             if self.tags[tag_index] is not None:
+                   self.tags[tag_index].props.background = Constants.DEFAULT_COLOR
+   
+    def show_breakpoint_tags(self):
+         for tag_index in self.utils.breakpoint_lines:
+             if self.tags[tag_index] is not None:
+                 self.tags[tag_index].props.background = Constants.BREAKPOINT_COLOR
+    
 
     def show_error(self, message):
         error = Gtk.MessageDialog(self,0,Gtk.MessageType.ERROR,Gtk.ButtonsType.CANCEL,message)
