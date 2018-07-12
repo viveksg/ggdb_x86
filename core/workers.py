@@ -37,14 +37,15 @@ class WriteWorker(Thread):
             self.event.clear()
 
                 
-
 class ReadWorker(Thread):
+
     read_queue = None
     read_fd  = None
     event = None
     utils = None
     result_queue = None
     result_event = None
+
     def __init__(self,read_q,rfd,evt,out_q,out_evt):
         Thread.__init__(self)
         self.read_queue = read_q
@@ -94,7 +95,7 @@ class ReadWorker(Thread):
                  break
          return result 
 
-    def send_output(self,line_no,output_target,output):
-        self.result_queue.put((line_no,output_target,output))
+    def send_output(self,line_no, output_target, output):
+        self.result_queue.put((line_no, output_target, output))
         self.result_event.wait()
         self.result_event.clear()
