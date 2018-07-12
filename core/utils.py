@@ -31,6 +31,7 @@ class Utils:
 
     def set_data(self, file_path):
         data = self.extract_data(file_path)
+        self.full_file_name = file_path
         self.parent_dir = data[Constants.FILE_PATH]
         self.file_name = data[Constants.FILE_NAME]
         self.extension = data[Constants.FILE_EXTENSION]
@@ -46,24 +47,24 @@ class Utils:
     def exec_command(self,command_params):
         subprocess.run(command_params)
     
-    def extract_data(self,data):
-        length = len(data)
+    def extract_data(self, file_path_data):
+        length = len(file_path_data)
         dot_found = False
         fname = ""
         ext = ""
         location = ""
         for i in range(length-1,-1,-1):
-           if data[i] == '.' and not dot_found:
+           if file_path_data[i] == '.' and not dot_found:
                dot_found = True
                ext = "." + ext
                continue
-           if data[i] == '/':
+           if file_path_data[i] == '/':
                break
            if dot_found:
-               fname = data[i] + fname
+               fname = file_path_data[i] + fname
            else:
-               ext = data[i] + ext
-        location = data[0:i]
+               ext = file_path_data[i] + ext
+        location = file_path_data[0:i]
         extracted_data = dict()
         extracted_data[Constants.FILE_PATH] = location 
         extracted_data[Constants.FILE_NAME] = fname
@@ -84,7 +85,7 @@ class Utils:
     def add_executable_to_gdb(self):
         self.gdb_controller.send_command(-1,None,"file "+self.executable)
     
-    def add_breakpoint(self,line_no):
+    def add_breakpoint(self, line_no):
         self.breakpoint_lines[line_no] = line_no
         self.breakpoints[line_no] = self.full_file_name+":"+str(line_no)
 
@@ -140,6 +141,7 @@ class Utils:
                 break
 
     def display_output(self, line_no, output_target, output):
+        print(output)
         if output_target == Constants.TARGET_STACK:
             self.app_window.show_stack_output(line_no, output)
         elif output_target == Constants.TARGET_MEMORY:
@@ -149,16 +151,17 @@ class Utils:
         elif output_target == Constants.TARGET_LINE_NO:
             line = self.get_current_executed_line(output)
             if line > -1:
-               if line > self.current_executed_line:
-                  self.current_executed_line = line
-                  self.app_window.set_current_executed_data(self.current_executed_line)
+                if line > self.current_executed_line:
+                    self.current_executed_line = line
+                    print("line no ====>"+str(line))
+                    self.app_window.set_current_executed_data(self.current_executed_line)
             else:
-               if line == Constants.EXECUTION_COMPLETE:
-                  self.app_window.set_execution_complete()
+                if line == Constants.EXECUTION_COMPLETE:
+                    self.app_window.set_execution_complete()
 
     def get_current_executed_line(self,data):
         data = data.strip()
-        if data is None or len(data) == 0 :
+        if data is None or len(data) == 0:
             return -1
 
         no_stack = re.findall('No Stack',data,re.M|re.I)
@@ -173,17 +176,22 @@ class Utils:
             if lines[0] is not None:
                   str_line = lines[0][1:]
         if str_line is not None:
-           line = int(str_line)
+            line = int(str_line)
 
-        return (line - 1);
+        return line - 1;
         
-        
+    def reset(self):
+        self.current_executed_line = -1
     
+    @staticmethod
+    def convert_to_zero_index(value):
+        if value > 0:
+            return value - 1
+        return 0
 
-   
-          
-
-
+    @staticmethod
+    def convert_to_one_index(value):
+        return value + 1
 
    
     

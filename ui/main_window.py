@@ -1,12 +1,12 @@
 import sys
 import time
-sys.path.append("../")
 import gi
+gi.require_version('Gtk','3.0')
+from gi.repository import Gtk,Gio,GObject
+sys.path.append("/home/vivsg/projects/work/ggdb_x86/")
 from core.utils import Utils
 from core.constants import Constants
 from core.output import Output
-gi.require_version('Gtk','3.0')
-from gi.repository import Gtk,Gio,GObject
 
 
 class MainWindow(Gtk.ApplicationWindow):
@@ -93,13 +93,14 @@ class MainWindow(Gtk.ApplicationWindow):
         print(str(self.current_line))
 
     def handle_next_clicked(self, widget):
+        print(self.current_line)
+        print(self.highest_line_reached)
         if self.current_line == self.code.total_lines:
             return
         self.disable_step_controls()
         if self.current_line > -1:
             self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"white")
 
-        
         self.current_line += 1 if self.current_line < self.highest_line_reached or not self.execution_complete else 0
         
         if self.current_line <= self.highest_line_reached:
@@ -169,6 +170,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.stack_cache.clear()
         self.results.clear()
         self.allow_adding_breakpoints = True
+        self.utils.reset()
     
     def addScrolledWindows(self):
        grid = Gtk.Grid()
@@ -208,15 +210,15 @@ class MainWindow(Gtk.ApplicationWindow):
        current_line = current_iter.get_line()
        return current_line
    
-    def addTag(self,buffer,current_line):
+    def addTag(self,buffer, current_line):
        self.tags_selection[current_line] = (self.tags_selection[current_line] + 1) % 2
        if self.tags_selection[current_line] == 0:
-             self.utils.add_breakpoint(current_line)
+             self.utils.add_breakpoint(Utils.convert_to_one_index(current_line))
        else:
-             self.utils.remove_breakpoint(current_line)
+             self.utils.remove_breakpoint(Utils.convert_to_one_index(current_line))
 
        if self.tags[current_line] is None:
-           self.tags[current_line]  = buffer.create_tag("tag_"+str(current_line),background = "orange")
+           self.tags[current_line] = buffer.create_tag("tag_"+str(current_line), background="orange")
            buffer.apply_tag(self.tags[current_line],buffer.get_iter_at_line(current_line),buffer.get_iter_at_line(current_line + 1)) 
            return
        self.tags[current_line].props.background = self.colors[self.tags_selection[current_line]]
@@ -230,11 +232,13 @@ class MainWindow(Gtk.ApplicationWindow):
    
     def hide_breakpoint_tags(self):
          for tag_index in self.utils.breakpoint_lines:
+             tag_index = Utils.convert_to_zero_index(tag_index)
              if self.tags[tag_index] is not None:
                    self.tags[tag_index].props.background = Constants.DEFAULT_COLOR
    
     def show_breakpoint_tags(self):
          for tag_index in self.utils.breakpoint_lines:
+             tag_index = Utils.convert_to_zero_index(tag_index)
              if self.tags[tag_index] is not None:
                  self.tags[tag_index].props.background = Constants.BREAKPOINT_COLOR
     
@@ -263,7 +267,7 @@ class MainWindow(Gtk.ApplicationWindow):
            else:
                self.results[line_no].reg_data = output
         self.registers.set_text(output)
-        self.add_tag_with_color(self.code.getTextBuffer(),self.results[self.current_line].line_no,"blue")
+        self.add_tag_with_color(self.code.getTextBuffer(), self.results[self.current_line].line_no, "blue")
         
     def disable_step_controls(self):
         self.next.set_sensitive(False)
@@ -287,9 +291,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.prev.set_sensitive(False)
         self.stop.set_sensitive(False)
     
-    
     def set_current_executed_data(self, last_executed_line):
-        self.results[self.current_line] = Output(self.current_line,last_executed_line)
+        self.results[self.current_line] = Output(self.current_line, last_executed_line)
 
     def set_execution_complete(self):
         self.execution_complete = True
@@ -297,6 +300,7 @@ class MainWindow(Gtk.ApplicationWindow):
     def close_gdb(self):
         print('closing gdb')
         self.utils.quit_gdb()
+
 
 class ImageButton(Gtk.Button):
     def __init__(self,icon_name):
