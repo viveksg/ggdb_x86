@@ -1,6 +1,6 @@
 # ggdb_x86
 
-Graphical Debugger for mainly targeted for x86 asm code, based on GDB debugger.
+Graphical Debugger mainly targeted for x86 asm code, based on GDB debugger.
 
 This tool starts gdb process in background and obtains references 
 To read and write file descriptors of the GDB process.
